@@ -1,68 +1,82 @@
-# Scientific Poster Extraction Agent
+# Scientific Poster Extraction with AI
 
-## Overview
-The Scientific Poster Extraction Agent is a specialized AI tool designed to extract and analyze text and data from scientific posters. It leverages Amazon Bedrock Data Automation and Claude 3.5 Sonnet to process poster content in various formats, primarily PDFs.
+Extract structured insights from scientific posters using Amazon Bedrock Data Automation and Strands Agent SDK.
+
+## Problem Statement
+
+Scientific conferences generate thousands of research posters containing valuable insights, but extracting structured information is traditionally manual and time-consuming. This solution automates the digitization and analysis of poster content.
+
+## Solution
+
+This implementation combines two powerful technologies:
+
+- **Amazon Bedrock Data Automation**: Enterprise-grade multimodal processing with advanced OCR, layout understanding, and AI-powered content extraction
+- **Strands Agent SDK**: Workflow orchestration framework with Model Context Protocol (MCP) integration for seamless tool connectivity
 
 ## Key Features
-- **Text Extraction**: Automatically extracts text from poster sections including titles, authors, introduction, methods, results, and summary
-- **Data Extraction**: Converts figure data into structured CSV format
-- **Multi-Format Support**: Works with PDFs, images, and potentially video formats
-- **Structured Output**: Organizes extracted information for downstream analysis
 
-## Technical Architecture
-- **Foundation Model**: Anthropic Claude 3.5 Sonnet (via Amazon Bedrock)
-- **Framework**: Strands Agents SDK for agent creation and management
-- **Tools Integration**: Model Context Protocol (MCP) for tool integration
-- **Data Processing**: Amazon Bedrock Data Automation for document processing
+- **Multimodal Processing**: Handles PDFs, images, and documents with intelligent layout understanding
+- **Structured Extraction**: Automatically identifies titles, authors, methods, results, figures, and tables
+- **High Accuracy**: Leverages foundation models trained on scientific content
+- **Scalable**: Processes individual files or batches efficiently
+- **Production Ready**: Built-in error handling, logging, and monitoring
 
 ## Use Cases
-- **Conference Research**: Quickly digitize and analyze scientific posters from conferences
-- **Literature Review**: Extract structured data from multiple posters for comparative analysis
-- **Knowledge Management**: Build searchable databases of scientific poster content
-- **Research Acceleration**: Automate the extraction of key findings from scientific posters
 
-## Implementation Details
-The agent is implemented using:
-- Strands Agents SDK for agent orchestration
-- MCP clients for AWS documentation and Bedrock Data Automation
-- File operations for saving extracted data
-- Claude 3.5 Sonnet for natural language understanding and extraction
+- **Research Institutions**: Digitize poster sessions from conferences
+- **Pharmaceutical Companies**: Analyze clinical trial posters and findings
+- **Academic Libraries**: Create searchable databases of research presentations
+- **Grant Agencies**: Review and categorize funded research outcomes
 
-## Sample Workflow
-1. User provides a scientific poster in PDF format
-2. Agent processes the poster using Bedrock Data Automation
-3. Text is extracted from all relevant sections
-4. Figure data is converted to CSV format
-5. Results are saved to the specified output location
-6. User can query the extracted content
+## Quick Start
 
-## Requirements
-- AWS account with access to Amazon Bedrock
-- Permissions for Claude 3.5 Sonnet model
-- Python environment with required dependencies
-- Access to Bedrock Data Automation
+### Prerequisites
+- AWS account with Bedrock Data Automation access
+- Python 3.8+ environment
+- S3 bucket for temporary storage
 
-## Sample Data
-The example uses a sample scientific poster downloaded from:
-https://cdn.stemcell.com/media/files/poster/SP00240-Isolation_of_Tumor_Infiltrating_Leukocytes_from_Mouse_Tumors.pdf
-
-This is a sample poster for demonstration purposes. Bedrock Data Automation supports various formats including images, documents, and videos for extraction and analysis.
-
-## How to Run
-To run the Scientific Poster Extraction Agent, use the following command in your terminal:
-
+### Installation
 ```bash
-python3 poster_agent.py
+pip install strands mcp boto3
 ```
 
-This will execute the agent, which will process the sample poster PDF located in the data directory and save the extracted information to the output folder.
+### Configuration
+```bash
+export AWS_PROFILE=default
+export AWS_REGION=us-east-1
+export AWS_BUCKET_NAME=your-bucket-name
+```
+
+### Run the Notebook
+```bash
+jupyter notebook scientific_poster_extraction.ipynb
+```
+
+## Sample Output
+
+The system extracts:
+- **Metadata**: Document statistics (52 elements, 1 table, 20 figures detected)
+- **Structured Content**: Markdown-formatted text with preserved hierarchy
+- **Visual Elements**: Automatic figure and table identification
+- **Rich Context**: Semantic understanding of scientific terminology
+
+## Architecture
+
+1. **Document Upload**: PDF automatically uploaded to S3
+2. **Multimodal Processing**: BDA analyzes text and visual elements
+3. **Structure Extraction**: Identifies document hierarchy and relationships
+4. **Content Analysis**: AI models extract semantic meaning
+5. **Structured Output**: Results returned in JSON with rich metadata
+
+## Sample Data
+
+Example poster: [Tumor-Infiltrating Leukocytes Research](https://cdn.stemcell.com/media/files/poster/SP00240-Isolation_of_Tumor_Infiltrating_Leukocytes_from_Mouse_Tumors.pdf)
 
 ## Next Steps
-Future development of this agent will focus on deployment with Amazon Bedrock AgentCore. This will enable:
 
-- **Simplified Deployment**: Streamlined deployment process for production environments
-- **Scalable Infrastructure**: Built-in scaling capabilities for handling multiple concurrent requests
-- **Enhanced Security**: Enterprise-grade security features for handling sensitive medical data
-- **Monitoring & Observability**: Comprehensive monitoring and logging capabilities
+- **Batch Processing**: Handle multiple posters simultaneously
+- **Custom Schemas**: Define specific extraction templates
+- **Semantic Search**: Build searchable indexes with vector embeddings
+- **Integration**: Connect with research databases and LIMS systems
 
-For more information about Amazon Bedrock AgentCore, visit: https://aws.amazon.com/bedrock/agentcore/
+For production deployment, consider Amazon Bedrock AgentCore for enhanced scalability and enterprise features.
