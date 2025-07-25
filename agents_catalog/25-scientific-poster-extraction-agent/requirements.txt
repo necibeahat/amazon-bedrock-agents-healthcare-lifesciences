@@ -1,4 +1,0 @@
-urllib3
-strands-agents 
-strands-agents-tools
-uv
