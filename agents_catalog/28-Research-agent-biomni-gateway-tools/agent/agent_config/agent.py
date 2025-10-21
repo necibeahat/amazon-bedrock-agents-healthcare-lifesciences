@@ -1,5 +1,5 @@
 from .utils import get_ssm_parameter
-from agent.agent_config.memory_hook_provider import MemoryHook
+from .memory_hook_provider import MemoryHook
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
