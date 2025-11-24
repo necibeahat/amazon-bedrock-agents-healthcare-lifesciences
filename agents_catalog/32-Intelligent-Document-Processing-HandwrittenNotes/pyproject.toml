@@ -8,6 +8,7 @@ dependencies = [
   "boto3>=1.40.23",
   "streamlit>=1.49.1",
   "uv>=0.8.15",
+  "streamlit-extras"
 ]
 
 [dependency-groups]

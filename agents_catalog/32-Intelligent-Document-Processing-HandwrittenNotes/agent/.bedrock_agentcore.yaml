@@ -1,0 +1,30 @@
+default_agent: idp_quality_check_agent
+agents:
+  idp_quality_check_agent:
+    name: idp_quality_check_agent
+    entrypoint: quality_check_agent.py
+    platform: linux/arm64
+    container_runtime: finch
+    aws:
+      execution_role: arn:aws:iam::774305571746:role/AgentCoreExecutionRole-IDP-QualityCheck
+      execution_role_auto_create: true
+      account: '774305571746'
+      region: us-east-1
+      ecr_repository: 774305571746.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-idp_quality_check_agent
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: idp_quality_check_agent-NXE9NH91nH
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:774305571746:runtime/idp_quality_check_agent-NXE9NH91nH
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-idp_quality_check_agent-builder
+      execution_role: arn:aws:iam::774305571746:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-285b67f093
+      source_bucket: bedrock-agentcore-codebuild-sources-774305571746-us-east-1
+    authorizer_configuration: null
+    oauth_configuration: null

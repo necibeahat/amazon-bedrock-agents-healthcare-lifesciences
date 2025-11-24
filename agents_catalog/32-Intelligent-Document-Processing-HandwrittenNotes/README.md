@@ -1,5 +1,61 @@
 # IDP Agent for Handwritten Documents
 
+## 🆕 New: Three-Agent Architecture
+
+This project has been refactored into **three independent, specialized agents** that work together to provide a complete IDP workflow:
+
+1. **Extractor Agent** (`agent/extractor_agent.py`) - Processes PDFs using BDA MCP and saves to S3
+2. **Database Agent** (`agent/database_agent.py`) - Imports extracted data into DynamoDB
+3. **Quality Check Agent** (`agent/quality_check_agent.py`) - Enables querying, validation, and field updates
+
+### Quick Links
+- 📘 **[QUICK_START.md](QUICK_START.md)** - Get started in 5 minutes
+- 📖 **[AGENTS_GUIDE.md](AGENTS_GUIDE.md)** - Complete documentation, API reference, and advanced usage
+- 🖥️ **[app_orchestrator.py](app_orchestrator.py)** - NEW: Unified Streamlit UI with tabs for each agent
+- 💻 **Original single agent**: `agent/agent.py` (kept for reference)
+
+### Running the Orchestrator UI
+
+```bash
+streamlit run app_orchestrator.py
+```
+
+The orchestrator provides:
+- 🔄 **Sequential Processing** - Run all three agents automatically
+- Individual agent tabs with independent triggers
+- Interactive Quality Check chat interface
+
+### Why Three Agents?
+
+**Separation of Concerns:**
+- Each agent has a focused, well-defined responsibility
+- Independent deployment and scaling
+- Easier testing and maintenance
+
+**Flexible Workflow:**
+- Run agents independently or in sequence
+- Batch process at different rates
+- Different resource requirements per agent
+
+**Better Data Management:**
+- Structured storage in DynamoDB
+- Query and update capabilities
+- Audit trail of validations and updates
+
+### Architecture Comparison
+
+**Original (Single Agent):**
+```
+PDF → BDA MCP → In-Memory Cache → Conversational Q&A
+```
+
+**New (Three Agents):**
+```
+PDF Files (S3) → Extractor Agent → JSON (S3) → Database Agent → DynamoDB → Quality Check Agent
+```
+
+---
+
 ## Problem Statement
 
 Intelligent Document Processing (IDP) extracts structured data from unstructured text. Unstructured data comprises 80% of enterprise data and remains largely untapped due to its complexity. This content represents a rich source of insights that can drive better decision-making, enhance customer experiences, and uncover new business opportunities. Yet only about 18% of organizations are able to take advantage of their unstructured data at scale.
