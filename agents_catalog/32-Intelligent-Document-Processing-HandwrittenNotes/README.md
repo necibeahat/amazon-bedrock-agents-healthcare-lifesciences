@@ -74,7 +74,7 @@ PDF Files (S3) → Extractor Agent → JSON Files (S3) → Database Agent → Dy
                  BDA MCP Server                      Table Creation           Query/Validate/Update
 ```
 
-![Architecture Diagram](architecture/IDP_Agent_Architecture.png)
+![Architecture Diagram](architecture/architecture.png)
 
 ### Agent Workflows
 
