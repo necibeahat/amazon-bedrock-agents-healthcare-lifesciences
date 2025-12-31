@@ -102,6 +102,22 @@ echo "  3. idp_quality_check_agent"
 echo ""
 echo -e "${GREEN}Region:${NC} $AWS_REGION"
 echo ""
+
+# Load and persist Agent ARNs
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Loading Agent ARNs${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+if bash load_agent_arns.sh; then
+    echo -e "${GREEN}✓ Agent ARNs loaded and persisted successfully${NC}"
+else
+    echo -e "${YELLOW}! Warning: Could not load Agent ARNs automatically${NC}"
+    echo -e "${YELLOW}  You can manually run: bash load_agent_arns.sh${NC}"
+fi
+echo ""
+
 echo -e "${YELLOW}Next Steps:${NC}"
 echo ""
 echo -e "${GREEN}1. Upload PDF files to S3:${NC}"

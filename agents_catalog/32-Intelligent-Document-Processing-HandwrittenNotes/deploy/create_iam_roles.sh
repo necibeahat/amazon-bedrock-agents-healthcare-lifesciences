@@ -111,6 +111,7 @@ S3_POLICY=$(cat <<EOF
       "Effect": "Allow",
       "Action": [
         "s3:GetObject",
+        "s3:PutObject",
         "s3:ListBucket"
       ],
       "Resource": [
@@ -174,6 +175,29 @@ ECR_POLICY=$(cat <<EOF
 EOF
 )
 create_inline_policy "$EXTRACTOR_ROLE" "ECRAccessPolicy" "$ECR_POLICY"
+
+# Create BDA policy
+BDA_POLICY=$(cat <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeDataAutomationAsync",
+        "bedrock:GetDataAutomationStatus"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:*:${AWS_ACCOUNT_ID}:data-automation-project/*",
+        "arn:aws:bedrock:*:${AWS_ACCOUNT_ID}:data-automation-profile/*",
+        "arn:aws:bedrock:*:${AWS_ACCOUNT_ID}:data-automation-invocation/*"
+      ]
+    }
+  ]
+}
+EOF
+)
+create_inline_policy "$EXTRACTOR_ROLE" "BDAAccessPolicy" "$BDA_POLICY"
 
 echo ""
 

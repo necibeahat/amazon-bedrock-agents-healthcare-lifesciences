@@ -205,6 +205,38 @@ async def quality_check_agent(payload):
         yield f"✅ Found {len(documents)} document(s)\n\n"
         
         # Prepare context for AI
+        def flatten_fields(fields_dict, parent_key=''):
+            """Recursively flatten nested field structures"""
+            flat_fields = {}
+            for key, value in fields_dict.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                
+                if isinstance(value, dict):
+                    # Check if this is a field with value/confidence
+                    if 'value' in value and 'confidence' in value:
+                        flat_fields[full_key] = {
+                            'value': value.get('value'),
+                            'confidence': value.get('confidence', 0),
+                            'validated': value.get('validated', False)
+                        }
+                    elif 'validated' in value and len(value) > 1:
+                        # This is a section, recurse without the 'validated' key
+                        nested = flatten_fields({k: v for k, v in value.items() if k != 'validated'}, full_key)
+                        flat_fields.update(nested)
+                    else:
+                        # Generic nested structure
+                        nested = flatten_fields(value, full_key)
+                        flat_fields.update(nested)
+                else:
+                    # Scalar value
+                    flat_fields[full_key] = {
+                        'value': str(value),
+                        'confidence': 0.0,
+                        'validated': False
+                    }
+            
+            return flat_fields
+        
         context_data = []
         for doc in documents:
             doc_summary = {
@@ -215,13 +247,9 @@ async def quality_check_agent(payload):
             }
             
             extracted_fields = doc.get('extracted_fields', {})
-            for field_name, field_data in extracted_fields.items():
-                if isinstance(field_data, dict):
-                    doc_summary['fields'][field_name] = {
-                        'value': field_data.get('value'),
-                        'confidence': field_data.get('confidence', 0),
-                        'validated': field_data.get('validated', False)
-                    }
+            # Flatten nested structures
+            flattened_fields = flatten_fields(extracted_fields)
+            doc_summary['fields'] = flattened_fields
             
             context_data.append(doc_summary)
         

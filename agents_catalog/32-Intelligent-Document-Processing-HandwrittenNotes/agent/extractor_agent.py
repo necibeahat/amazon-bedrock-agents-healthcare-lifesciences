@@ -22,7 +22,7 @@ INPUT_PREFIX = "input-pdfs/"
 OUTPUT_BUCKET = "idp-wwso-output"
 OUTPUT_PREFIX = "extracted-data/"
 
-BDA_PROJECT_ARN = os.environ.get("BDA_PROJECT_ARN", "arn:aws:bedrock:us-east-1:774305571746:data-automation-project/ef41d092d129")
+BDA_PROJECT_ARN = os.environ.get("BDA_PROJECT_ARN", "arn:aws:bedrock:us-east-1:774305571746:data-automation-project/15a44aee9ba0")
 
 @app.entrypoint
 async def extractor_agent(payload):
@@ -38,6 +38,18 @@ async def extractor_agent(payload):
         
         s3_client = boto3.client('s3')
         
+        # Parse the user prompt to extract specific filenames if provided
+        import re
+        specific_files = []
+        if "Extract only these specific documents" in user_prompt:
+            # Extract filenames from the prompt
+            # Format: "Extract only these specific documents from the input bucket: file1.pdf, file2.pdf"
+            match = re.search(r'documents from the input bucket:\s*(.+?)(?:\n|$)', user_prompt)
+            if match:
+                filenames_str = match.group(1).strip()
+                specific_files = [f.strip() for f in filenames_str.split(',')]
+                yield f"📋 Target files: {', '.join(specific_files)}\n\n"
+        
         # List PDF files in input bucket
         yield f"📂 Scanning input bucket: s3://{INPUT_BUCKET}/{INPUT_PREFIX}\n\n"
         
@@ -51,14 +63,31 @@ async def extractor_agent(payload):
                 yield "❌ No files found in input bucket\n"
                 return
             
-            pdf_files = [obj['Key'] for obj in response['Contents'] 
+            all_pdf_files = [obj['Key'] for obj in response['Contents'] 
                         if obj['Key'].lower().endswith('.pdf')]
             
-            if not pdf_files:
-                yield "❌ No PDF files found in input bucket\n"
-                return
+            # Filter by specific files if provided
+            if specific_files:
+                pdf_files = []
+                for file_key in all_pdf_files:
+                    filename = os.path.basename(file_key)
+                    if filename in specific_files:
+                        pdf_files.append(file_key)
+                
+                if not pdf_files:
+                    yield f"❌ None of the specified files found in bucket\n"
+                    yield f"   Specified: {', '.join(specific_files)}\n"
+                    yield f"   Available: {', '.join([os.path.basename(f) for f in all_pdf_files])}\n"
+                    return
+                
+                yield f"✅ Found {len(pdf_files)} of {len(specific_files)} specified file(s) to process\n\n"
+            else:
+                pdf_files = all_pdf_files
+                yield f"✅ Found {len(pdf_files)} PDF file(s) to process (all files in bucket)\n\n"
             
-            yield f"✅ Found {len(pdf_files)} PDF file(s) to process\n\n"
+            if not pdf_files:
+                yield "❌ No PDF files found to process\n"
+                return
             
         except Exception as e:
             yield f"❌ Error accessing S3 bucket: {str(e)}\n"

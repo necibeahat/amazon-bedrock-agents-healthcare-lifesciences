@@ -19,11 +19,12 @@ import boto3
 import streamlit as st
 from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
+from botocore.config import Config
 
 # Page configuration
 st.set_page_config(
     page_title="IDP Document Processing",
-    page_icon="📄",
+    page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -101,11 +102,18 @@ AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 # Initialize AWS clients
 @st.cache_resource
 def get_aws_clients():
-    """Initialize and cache AWS clients"""
+    """Initialize and cache AWS clients with extended timeouts"""
+    # Extended timeout config for long-running agent operations
+    config = Config(
+        read_timeout=300,  # 5 minutes for agent processing
+        connect_timeout=60,
+        retries={'max_attempts': 3}
+    )
+    
     return {
         's3': boto3.client('s3', region_name=AWS_REGION),
         'dynamodb': boto3.resource('dynamodb', region_name=AWS_REGION),
-        'bedrock_agentcore': boto3.client('bedrock-agentcore', region_name=AWS_REGION),
+        'bedrock_agentcore': boto3.client('bedrock-agentcore', region_name=AWS_REGION, config=config),
         'bedrock_agentcore_control': boto3.client('bedrock-agentcore-control', region_name=AWS_REGION)
     }
 
@@ -189,17 +197,41 @@ def update_field_in_dynamodb(document_id: str, field_name: str, new_value: str, 
         
         extracted_fields = item.get('extracted_fields', {})
         
-        if field_name not in extracted_fields:
-            extracted_fields[field_name] = {
+        # Handle nested field paths (e.g., "patient_information.gender")
+        field_parts = field_name.split('.')
+        
+        # Navigate to the correct nested location
+        current_level = extracted_fields
+        for i, part in enumerate(field_parts[:-1]):
+            if part not in current_level:
+                current_level[part] = {}
+            current_level = current_level[part]
+        
+        # Update the final field
+        final_key = field_parts[-1]
+        
+        if final_key not in current_level or not isinstance(current_level[final_key], dict):
+            # Create new field structure
+            current_level[final_key] = {
                 'value': new_value,
                 'confidence': 1.0,
                 'validated': True
             }
         else:
-            extracted_fields[field_name]['value'] = new_value
-            extracted_fields[field_name]['validated'] = validated
-            if validated:
-                extracted_fields[field_name]['confidence'] = 1.0
+            # Update existing field
+            if 'value' in current_level[final_key]:
+                # It's a proper field with value/confidence structure
+                current_level[final_key]['value'] = new_value
+                current_level[final_key]['validated'] = validated
+                if validated:
+                    current_level[final_key]['confidence'] = 1.0
+            else:
+                # It's nested structure, create field structure
+                current_level[final_key] = {
+                    'value': new_value,
+                    'confidence': 1.0,
+                    'validated': True
+                }
         
         extracted_fields = convert_floats_to_decimal(extracted_fields)
         
@@ -248,6 +280,29 @@ def invoke_agent(agent_arn: str, prompt: str, session_id: str) -> str:
             content = response_obj.read()
             if isinstance(content, bytes):
                 content = content.decode('utf-8')
+            
+            # Check if content is in SSE (Server-Sent Events) format
+            if content.startswith('data: ') or '\ndata: ' in content:
+                # Parse SSE format
+                lines = content.split('\n')
+                parsed_content = []
+                for line in lines:
+                    if line.startswith('data: '):
+                        # Extract the data after "data: " prefix
+                        data_str = line[6:]  # Remove "data: " prefix
+                        try:
+                            # Try to parse as JSON
+                            data_json = json.loads(data_str)
+                            parsed_content.append(data_json)
+                        except:
+                            # If not JSON, just use the string
+                            parsed_content.append(data_str)
+                
+                # Join all content pieces
+                result = ''.join(str(item) for item in parsed_content)
+                return result.strip()
+            
+            # Try to parse as JSON
             try:
                 data = json.loads(content)
                 if isinstance(data, dict) and 'result' in data:
@@ -329,15 +384,52 @@ def tab_document_extraction():
                     st.info("🔄 Starting extraction process...")
                     session_id = str(uuid.uuid4())
                     
+                    # Create a list of uploaded filenames to pass to the agent
+                    uploaded_filenames = [file.name for file in uploaded_files]
+                    extraction_prompt = f"Extract only these specific documents from the input bucket: {', '.join(uploaded_filenames)}"
+                    
+                    # Timer display
+                    import time
+                    start_time = time.time()
+                    timer_placeholder = st.empty()
+                    
                     with st.expander("View Extraction Log", expanded=True):
+                        # Show initial timer
+                        timer_placeholder.info(f"⏱️ Extraction in progress... 0s elapsed")
+                        
                         result = invoke_agent(
                             agent_arn,
-                            "Extract all documents from the input bucket",
+                            extraction_prompt,
                             session_id
                         )
                         st.code(result)
                     
-                    st.success("✅ Extraction completed! Go to the Validation tab to review results.")
+                    # Calculate and display final time
+                    elapsed_time = time.time() - start_time
+                    timer_placeholder.success(f"✅ Extraction completed in {elapsed_time:.1f} seconds!")
+                    
+                    # Automatically invoke database agent to load data into DynamoDB
+                    st.info("💾 Loading extracted data into DynamoDB...")
+                    
+                    # Find database agent
+                    database_agents = [a for a in agents if 'database' in a.get('agentRuntimeName', '').lower()]
+                    
+                    if database_agents:
+                        db_agent_arn = database_agents[0].get('agentRuntimeArn')
+                        db_session_id = str(uuid.uuid4())
+                        
+                        with st.expander("View Database Import Log", expanded=False):
+                            db_result = invoke_agent(
+                                db_agent_arn,
+                                "Import all extracted data from S3 to DynamoDB",
+                                db_session_id
+                            )
+                            st.code(db_result)
+                        
+                        st.success("✅ Data loaded into DynamoDB! Go to the Validation tab to review results.")
+                    else:
+                        st.warning("⚠️ Database agent not found. Data extracted but not loaded into DynamoDB yet.")
+                        st.info("💡 Please run the database agent manually to load data.")
                 else:
                     st.warning("⚠️ No agent ARN selected. Files uploaded but extraction not started.")
             else:
@@ -349,6 +441,12 @@ def tab_validation():
     """Visualization and validation interface"""
     st.header("✅ Extraction Validation")
     
+    # Add refresh button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("🔄 Refresh", help="Reload documents from database"):
+            st.rerun()
+    
     # Fetch documents from DynamoDB
     documents = get_documents_from_dynamodb()
     
@@ -356,13 +454,21 @@ def tab_validation():
         st.info("📭 No documents found. Please extract documents first.")
         return
     
+    # Sort documents by extraction timestamp (newest first)
+    documents.sort(key=lambda x: x.get('extraction_timestamp', ''), reverse=True)
+    
     st.success(f"📊 Found {len(documents)} document(s)")
     
-    # Document selector
-    doc_options = {
-        f"{doc.get('source_file', 'Unknown')} ({doc.get('document_id', '')[:8]}...)": doc
-        for doc in documents
-    }
+    # Document selector with better labeling
+    doc_options = {}
+    for idx, doc in enumerate(documents):
+        source_file = os.path.basename(doc.get('source_file', 'Unknown'))
+        doc_id = doc.get('document_id', '')[:8]
+        timestamp = doc.get('extraction_timestamp', 'N/A')
+        if timestamp != 'N/A':
+            timestamp = timestamp[:19].replace('T', ' ')
+        label = f"{source_file} | {timestamp} | ID: {doc_id}..."
+        doc_options[label] = doc
     
     selected_doc_name = st.selectbox(
         "Select Document to Validate",
@@ -394,14 +500,79 @@ def tab_validation():
         st.warning("⚠️ No extracted fields found for this document.")
         return
     
-    st.subheader("📋 Extracted Fields")
+    # Helper function to organize fields into groups
+    def organize_fields_into_groups(fields_dict):
+        """Organize fields into logical groups based on field names"""
+        groups = {
+            'Personal Information': [],
+            'Contact Information': [],
+            'Medical History': [],
+            'Current Medications': [],
+            'Allergies': [],
+            'Insurance & Demographics': [],
+            'Other Information': []
+        }
+        
+        def flatten_and_categorize(fields, parent_key=''):
+            """Flatten nested structure and categorize fields"""
+            for key, value in fields.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                
+                if isinstance(value, dict):
+                    if 'value' in value and 'confidence' in value:
+                        # This is a field with value/confidence
+                        field_info = {
+                            'name': full_key,
+                            'value': value.get('value', ''),
+                            'confidence': float(value.get('confidence', 0)),
+                            'validated': value.get('validated', False)
+                        }
+                        
+                        # Categorize based on field name (only add to ONE group)
+                        key_lower = full_key.lower()
+                        if any(term in key_lower for term in ['phone', 'email', 'address', 'emergency', 'contact']):
+                            groups['Contact Information'].append(field_info)
+                        elif any(term in key_lower for term in ['condition', 'disease', 'diagnosis', 'history', 'surgery', 'symptom']):
+                            groups['Medical History'].append(field_info)
+                        elif any(term in key_lower for term in ['medication', 'drug', 'prescription', 'dose']):
+                            groups['Current Medications'].append(field_info)
+                        elif any(term in key_lower for term in ['allergy', 'allergies', 'reaction']):
+                            groups['Allergies'].append(field_info)
+                        elif any(term in key_lower for term in ['insurance', 'policy', 'provider', 'ssn', 'member']):
+                            groups['Insurance & Demographics'].append(field_info)
+                        elif any(term in key_lower for term in ['name', 'age', 'gender', 'sex', 'birth', 'dob', 'patient']):
+                            groups['Personal Information'].append(field_info)
+                        else:
+                            groups['Other Information'].append(field_info)
+                    elif 'validated' in value and len(value) > 1:
+                        # This is a section, recurse without the 'validated' key
+                        flatten_and_categorize({k: v for k, v in value.items() if k != 'validated'}, full_key)
+                    else:
+                        # Generic nested structure
+                        flatten_and_categorize(value, full_key)
+                else:
+                    # Scalar value, wrap and categorize
+                    field_info = {
+                        'name': full_key,
+                        'value': str(value),
+                        'confidence': 0.0,
+                        'validated': False
+                    }
+                    groups['Other Information'].append(field_info)
+        
+        flatten_and_categorize(fields_dict)
+        
+        # Remove empty groups
+        return {k: v for k, v in groups.items() if v}
     
-    # Statistics
-    total_fields = len(extracted_fields)
-    validated_fields = sum(1 for f in extracted_fields.values() if isinstance(f, dict) and f.get('validated', False))
-    avg_confidence = sum(
-        float(f.get('confidence', 0)) for f in extracted_fields.values() if isinstance(f, dict)
-    ) / total_fields if total_fields > 0 else 0
+    # Organize fields into groups
+    grouped_fields = organize_fields_into_groups(extracted_fields)
+    
+    # Calculate statistics
+    all_fields = [field for group in grouped_fields.values() for field in group]
+    total_fields = len(all_fields)
+    validated_fields = sum(1 for f in all_fields if f.get('validated', False))
+    avg_confidence = sum(f.get('confidence', 0) for f in all_fields) / total_fields if total_fields > 0 else 0
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -414,67 +585,101 @@ def tab_validation():
     
     st.divider()
     
-    # Display each field with validation controls
-    for field_name, field_data in sorted(extracted_fields.items()):
-        if not isinstance(field_data, dict):
-            field_data = {'value': str(field_data), 'confidence': 0.0, 'validated': False}
+    # Display fields by group with data editor
+    import pandas as pd
+    
+    for group_name, fields in grouped_fields.items():
+        if not fields:
+            continue
         
-        value = field_data.get('value', '')
-        confidence = float(field_data.get('confidence', 0))
-        validated = field_data.get('validated', False)
-        
-        # Confidence color coding
-        if confidence > 0.8:
-            confidence_class = "confidence-high"
-            confidence_emoji = "🟢"
-        elif confidence > 0.5:
-            confidence_class = "confidence-medium"
-            confidence_emoji = "🟡"
-        else:
-            confidence_class = "confidence-low"
-            confidence_emoji = "🔴"
-        
-        # Create field card
-        with st.container():
-            col1, col2, col3 = st.columns([3, 1, 1])
-            
-            with col1:
-                st.markdown(f"**{field_name}**")
-                new_value = st.text_input(
-                    f"Value for {field_name}",
-                    value=str(value),
-                    key=f"field_{selected_doc.get('document_id')}_{field_name}",
-                    label_visibility="collapsed"
-                )
-            
-            with col2:
-                st.markdown(f"{confidence_emoji} **{confidence:.0%}**")
-                if validated:
-                    st.markdown('<span class="validated-badge">✓ Validated</span>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<span class="unvalidated-badge">⚠ Pending</span>', unsafe_allow_html=True)
-            
-            with col3:
-                if st.button("💾 Update", key=f"update_{selected_doc.get('document_id')}_{field_name}"):
-                    if update_field_in_dynamodb(
-                        selected_doc.get('document_id'),
-                        field_name,
-                        new_value,
-                        validated=True
-                    ):
-                        st.success(f"✅ Updated {field_name}")
-                        st.rerun()
+        with st.expander(f"📁 {group_name} ({len(fields)} fields)", expanded=True):
+            # Create DataFrame for display
+            df_data = []
+            for field in fields:
+                confidence = field.get('confidence', 0)
+                validated = field.get('validated', False)
                 
-                if not validated:
-                    if st.button("✓ Validate", key=f"validate_{selected_doc.get('document_id')}_{field_name}"):
-                        if update_field_in_dynamodb(
-                            selected_doc.get('document_id'),
-                            field_name,
-                            value,
-                            validated=True
-                        ):
-                            st.success(f"✅ Validated {field_name}")
-                            st.rerun()
+                # Confidence emoji
+                if confidence > 0.8:
+                    conf_display = f"🟢 {confidence:.0%}"
+                elif confidence > 0.5:
+                    conf_display = f"🟡 {confidence:.0%}"
+                else:
+                    conf_display = f"🔴 {confidence:.0%}"
+                
+                # Status emoji
+                status_display = "✅ Validated" if validated else "⏳ Pending"
+                
+                df_data.append({
+                    'Field': field['name'],
+                    'Value': str(field['value']),
+                    'Confidence': conf_display,
+                    'Status': status_display
+                })
+            
+            # Display as dataframe
+            df = pd.DataFrame(df_data)
+            
+            # Show the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Field": st.column_config.TextColumn("Field Name", width="medium"),
+                    "Value": st.column_config.TextColumn("Extracted Value", width="large"),
+                    "Confidence": st.column_config.TextColumn("Confidence", width="small"),
+                    "Status": st.column_config.TextColumn("Status", width="small")
+                }
+            )
+            
+            # Edit controls for this group
+            st.markdown("**Edit & Validate:**")
+            cols = st.columns(len(fields) if len(fields) <= 3 else 3)
+            
+            for idx, field in enumerate(fields):
+                col_idx = idx % (len(fields) if len(fields) <= 3 else 3)
+                with cols[col_idx]:
+                    field_name = field['name']
+                    current_value = field['value']
+                    validated = field['validated']
+                    
+                    # Shorter display name for UI
+                    display_name = field_name.split('.')[-1] if '.' in field_name else field_name
+                    
+                    # Use group_name + idx to ensure unique keys
+                    unique_key = f"{group_name}_{idx}_{selected_doc.get('document_id')}_{field_name}"
+                    
+                    new_value = st.text_input(
+                        display_name,
+                        value=str(current_value),
+                        key=f"edit_{unique_key}",
+                        help=f"Full path: {field_name}"
+                    )
+                    
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button("💾 Save", key=f"save_{unique_key}", use_container_width=True):
+                            if update_field_in_dynamodb(
+                                selected_doc.get('document_id'),
+                                field_name,
+                                new_value,
+                                validated=True
+                            ):
+                                st.success("✅ Saved")
+                                st.rerun()
+                    
+                    with col_b:
+                        if not validated:
+                            if st.button("✓ OK", key=f"validate_{unique_key}", use_container_width=True):
+                                if update_field_in_dynamodb(
+                                    selected_doc.get('document_id'),
+                                    field_name,
+                                    current_value,
+                                    validated=True
+                                ):
+                                    st.success("✅ Done")
+                                    st.rerun()
             
             st.divider()
     
@@ -597,11 +802,20 @@ def tab_qa():
 # Main application
 def main():
     """Main application entry point"""
-    st.markdown('<h1 class="main-header">� Intelligent Document Processing</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📝 Intelligent Document Processing</h1>', unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
-        st.image("static/gen-ai-dark.svg", width=100)
+        # Use absolute path for image
+        import pathlib
+        current_dir = pathlib.Path(__file__).parent
+        image_path = current_dir / "static" / "gen-ai-dark.svg"
+        
+        if image_path.exists():
+            st.image(str(image_path), width=100)
+        else:
+            st.markdown("### 🤖")
+        
         st.title("IDP System")
         
         st.divider()
@@ -611,24 +825,51 @@ def main():
         # Check AWS connectivity
         try:
             clients = get_aws_clients()
-            st.success("✅ AWS Connected")
             
-            # Check S3 buckets
+            # Get AWS Account ID
+            try:
+                sts_client = boto3.client('sts', region_name=AWS_REGION)
+                account_id = sts_client.get_caller_identity()['Account']
+                st.success(f"✅ AWS Connected")
+                st.caption(f"Account: {account_id}")
+            except Exception as e:
+                st.success("✅ AWS Connected")
+                st.caption("Account: Unable to retrieve")
+            
+            # Check S3 Input Bucket
             try:
                 clients['s3'].head_bucket(Bucket=S3_INPUT_BUCKET)
                 st.success(f"✅ S3 Input Bucket")
-            except:
+                st.caption(f"Bucket: {S3_INPUT_BUCKET}")
+            except Exception as e:
                 st.error(f"❌ S3 Input Bucket")
+                st.caption(f"Bucket: {S3_INPUT_BUCKET}")
+            
+            # Check S3 Output Bucket
+            try:
+                clients['s3'].head_bucket(Bucket=S3_OUTPUT_BUCKET)
+                st.success(f"✅ S3 Output Bucket")
+                st.caption(f"Bucket: {S3_OUTPUT_BUCKET}")
+            except Exception as e:
+                st.error(f"❌ S3 Output Bucket")
+                st.caption(f"Bucket: {S3_OUTPUT_BUCKET}")
             
             # Check DynamoDB table
             try:
                 table = clients['dynamodb'].Table(DYNAMODB_TABLE_NAME)
                 table.table_status
                 st.success(f"✅ DynamoDB Table")
-            except:
+                st.caption(f"Table: {DYNAMODB_TABLE_NAME}")
+            except Exception as e:
                 st.warning(f"⚠️ DynamoDB Table")
+                st.caption(f"Table: {DYNAMODB_TABLE_NAME}")
+            
+            # Display AWS Region
+            st.info(f"🌍 AWS Region")
+            st.caption(f"Region: {AWS_REGION}")
         except Exception as e:
             st.error(f"❌ AWS Connection Failed")
+            st.caption(f"Error: {str(e)}")
         
         st.divider()
         
@@ -640,15 +881,6 @@ def main():
         2. **Validate**: Review and validate extracted information
         3. **Query**: Ask questions about your documents
         """)
-        
-        st.divider()
-        
-        # Configuration
-        with st.expander("⚙️ Configuration"):
-            st.code(f"S3 Input: {S3_INPUT_BUCKET}")
-            st.code(f"S3 Output: {S3_OUTPUT_BUCKET}")
-            st.code(f"DynamoDB: {DYNAMODB_TABLE_NAME}")
-            st.code(f"Region: {AWS_REGION}")
     
     # Main tabs
     tab1, tab2, tab3 = st.tabs([

@@ -1,0 +1,22 @@
+{
+  "account_id": "774305571746",
+  "region": "us-east-1",
+  "agents": {
+    "idp_quality_check_agent": {
+      "agent_id": "idp_quality_check_agent-NXE9NH91nH",
+      "agent_arn": "arn:aws:bedrock-agentcore:us-east-1:774305571746:runtime/idp_quality_check_agent-NXE9NH91nH",
+      "status": "deployed"
+    },
+    "idp_database_agent": {
+      "agent_id": "idp_database_agent-1PrmJqAeeS",
+      "agent_arn": "arn:aws:bedrock-agentcore:us-east-1:774305571746:runtime/idp_database_agent-1PrmJqAeeS",
+      "status": "deployed"
+    },
+    "idp_extractor_agent": {
+      "agent_id": "idp_extractor_agent-ITWffZFXU5",
+      "agent_arn": "arn:aws:bedrock-agentcore:us-east-1:774305571746:runtime/idp_extractor_agent-ITWffZFXU5",
+      "status": "deployed"
+    }
+  },
+  "last_updated": "2025-12-30T13:41:38Z"
+}
