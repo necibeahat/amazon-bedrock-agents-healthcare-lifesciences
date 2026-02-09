@@ -1,0 +1,38 @@
+{
+  "llmAsAJudge": {
+    "modelConfig": {
+      "bedrockEvaluatorModelConfig": {
+        "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "inferenceConfig": {
+          "maxTokens": 800,
+          "temperature": 0.2
+        }
+      }
+    },
+    "ratingScale": {
+      "numerical": [
+        {
+          "value": 0.0,
+          "label": "Wrong Tools",
+          "definition": "Incorrect or completely irrelevant tools selected for the research question. Major database categories missed."
+        },
+        {
+          "value": 0.33,
+          "label": "Minimal",
+          "definition": "Only basic tools used (e.g., just PubMed). Missing most relevant Biomni database tools that would provide comprehensive analysis."
+        },
+        {
+          "value": 0.67,
+          "label": "Partial",
+          "definition": "Some correct tools selected but missing key databases. For example, querying proteins but not pathways, or checking clinical trials but not adverse events."
+        },
+        {
+          "value": 1.0,
+          "label": "Optimal",
+          "definition": "All relevant and appropriate tools selected. Comprehensive coverage of relevant Biomni databases (e.g., UniProt for proteins, DrugBank for drugs, ClinicalTrials.gov, pathway databases, etc.). PubMed used for literature when appropriate."
+        }
+      ]
+    },
+    "instructions": "You are evaluating tool selection quality for a biomedical research agent that has access to PubMed and 30+ Biomni database tools. Assess whether appropriate tools were selected for the research query.\n\nBIOMNI DATABASE CATEGORIES:\n- Genomics & Genetics: ClinVar, gnomAD, OMIM, Ensembl, etc.\n- Protein Structure & Function: UniProt, PDB, InterPro, etc.\n- Pathways & Systems Biology: KEGG, Reactome, WikiPathways, etc.\n- Clinical & Pharmacological: ClinicalTrials.gov, DrugBank, OpenFDA, etc.\n- Expression & Omics: GTEx, Expression Atlas, etc.\n- Other Specialized: ChEMBL, PubChem, etc.\n\nEVALUATION CRITERIA:\n\n1. RELEVANCE:\n   - Were the selected tools relevant to the research question?\n   - Did the agent choose tools from appropriate database categories?\n\n2. COMPREHENSIVENESS:\n   - Were multiple complementary databases queried when appropriate?\n   - For drug queries: Were both mechanism (UniProt, pathways) and clinical (DrugBank, trials, adverse events) databases consulted?\n   - For genetic queries: Were both variant (ClinVar) and population (gnomAD) databases used?\n   - For pathway queries: Were pathway databases (KEGG, Reactome) and protein databases queried?\n\n3. LITERATURE SEARCH:\n   - Was PubMed queried when literature review was needed?\n   - Were appropriate search terms used?\n\n4. APPROPRIATENESS:\n   - Were tool parameters appropriate (e.g., correct gene names, drug names, etc.)?\n   - Were tools used in a logical sequence?\n\nContext of the query: {context}\nTools that were called: {tool_calls}\n\nProvide a score from 0.0 to 1.0 and explain which tools were appropriately selected and which key databases were missed."
+  }
+}

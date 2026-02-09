@@ -1,0 +1,38 @@
+{
+  "llmAsAJudge": {
+    "modelConfig": {
+      "bedrockEvaluatorModelConfig": {
+        "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "inferenceConfig": {
+          "maxTokens": 800,
+          "temperature": 0.2
+        }
+      }
+    },
+    "ratingScale": {
+      "numerical": [
+        {
+          "value": 0.0,
+          "label": "Poor",
+          "definition": "PubMed was not used when literature review was clearly needed, or search terms were completely inappropriate."
+        },
+        {
+          "value": 0.33,
+          "label": "Inadequate",
+          "definition": "PubMed search performed but with poor search terms (too generic, missing key terms, or incorrect terminology). Search unlikely to retrieve relevant literature."
+        },
+        {
+          "value": 0.67,
+          "label": "Adequate",
+          "definition": "Reasonable PubMed search with mostly appropriate terms, but could be improved with additional keywords, Boolean operators, or specificity."
+        },
+        {
+          "value": 1.0,
+          "label": "Excellent",
+          "definition": "Optimal PubMed search strategy. Appropriate medical/scientific terminology, good combination of specific and general terms, relevant to the research question. Search likely to retrieve high-quality, relevant literature."
+        }
+      ]
+    },
+    "instructions": "You are evaluating the effectiveness of PubMed literature searches performed by a biomedical research agent. Assess the quality of search terms and strategy.\n\nEVALUATION CRITERIA:\n\n1. NECESSITY:\n   - Was a literature search appropriate for this query?\n   - If literature review was needed and PubMed was not used, score should be low.\n\n2. SEARCH TERM QUALITY:\n   - Are search terms scientifically accurate and appropriate?\n   - Do search terms use proper biomedical terminology (e.g., 'trastuzumab' not just 'herceptin', 'BRCA1' for gene names)?\n   - Are search terms specific enough to retrieve relevant results but not so narrow as to miss important papers?\n\n3. COMPREHENSIVENESS:\n   - For drug queries: Are both generic and brand names included when relevant?\n   - For disease queries: Are relevant synonyms or related terms included?\n   - For mechanism queries: Are pathway names, protein names, and related biological processes included?\n\n4. SEARCH STRATEGY:\n   - Are Boolean operators (AND, OR) used effectively when multiple concepts are combined?\n   - Are search terms logically connected to the research question?\n   - Would this search strategy retrieve current, high-quality literature on the topic?\n\n5. APPROPRIATENESS:\n   - Are the search terms aligned with what a biomedical researcher would use?\n   - Do the terms match the complexity and specificity of the original question?\n\nContext of the query: {context}\nPubMed tool call details: {tool_calls}\n\nProvide a score from 0.0 to 1.0 and explain the quality of the PubMed search strategy, including what was done well and what could be improved."
+  }
+}

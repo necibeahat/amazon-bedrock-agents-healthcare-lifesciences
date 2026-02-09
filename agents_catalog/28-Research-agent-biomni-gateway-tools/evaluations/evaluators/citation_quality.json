@@ -1,0 +1,43 @@
+{
+  "llmAsAJudge": {
+    "modelConfig": {
+      "bedrockEvaluatorModelConfig": {
+        "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "inferenceConfig": {
+          "maxTokens": 1000,
+          "temperature": 0.3
+        }
+      }
+    },
+    "ratingScale": {
+      "numerical": [
+        {
+          "value": 0.0,
+          "label": "Poor",
+          "definition": "No citations present, or citations are completely incorrect in format. Missing references section entirely."
+        },
+        {
+          "value": 0.25,
+          "label": "Basic",
+          "definition": "Some citations present but incomplete. References section exists but lacks proper formatting or essential details (missing PMIDs, URLs, or publication info)."
+        },
+        {
+          "value": 0.5,
+          "label": "Adequate",
+          "definition": "Citations present throughout response with minor formatting issues. References section includes most required information but may have inconsistencies."
+        },
+        {
+          "value": 0.75,
+          "label": "Good",
+          "definition": "Proper numbered in-text citations [1], [2], etc. References section is well-formatted with complete bibliographic details including PMIDs or DOIs for literature, and proper database citations."
+        },
+        {
+          "value": 1.0,
+          "label": "Excellent",
+          "definition": "Perfect citation format following biomedical research standards. All in-text citations properly numbered and sequential. Complete References section with full bibliographic details, PMIDs/DOIs for papers, proper database source citations, and each reference on a separate line."
+        }
+      ]
+    },
+    "instructions": "You are evaluating the citation quality in a biomedical research agent's response. Assess the following aspects:\n\n1. IN-TEXT CITATIONS:\n   - Are numbered in-text citations [1], [2], [3] used throughout the response?\n   - Are citations placed appropriately when referencing data, claims, or sources?\n   - Are citations sequential and consistent?\n\n2. REFERENCES SECTION:\n   - Is there a clear \"References\" section at the end?\n   - Are references numbered and formatted on separate lines?\n   - For academic papers: Does each reference include author names, title, journal, year, and PMID/DOI?\n   - For database queries: Does each reference identify the database name, tool used, query description, and retrieval date?\n\n3. COMPLETENESS:\n   - Are all in-text citations matched with corresponding references?\n   - Are references complete with all required bibliographic information?\n   - Are URLs provided where appropriate?\n\n4. FORMAT:\n   - Academic format: \"1. Author et al. Title. Journal. Year. PMID: [number]. Available at: [URL]\"\n   - Database format: \"2. Database Name (Tool: tool_name). Query: [description]. Retrieved: [date]\"\n\nResponse to evaluate: {assistant_turn}\n\nProvide a score from 0.0 to 1.0 and explain your rating based on the criteria above."
+  }
+}

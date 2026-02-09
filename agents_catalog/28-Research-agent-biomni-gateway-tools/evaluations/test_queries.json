@@ -1,0 +1,113 @@
+{
+  "description": "Test queries for Research Agent evaluation, extracted from sample queries in README.md",
+  "test_cases": [
+    {
+      "id": "tc_001",
+      "name": "Trastuzumab Mechanism Analysis",
+      "query": "Conduct a comprehensive analysis of trastuzumab (Herceptin) mechanism of action, and resistance mechanisms. I need:\n1. HER2 protein structure and binding sites\n2. Downstream signaling pathways affected\n3. Known resistance mechanisms from clinical data and adverse events from OpenFDA data\n4. Current clinical trials investigating combination therapies\n5. Biomarkers for treatment response prediction\n\nPlease query relevant databases to provide a comprehensive research report.",
+      "expected_tools": [
+        "pubmed_search",
+        "uniprot",
+        "drugbank",
+        "openfda",
+        "clinicaltrials_gov",
+        "pathway_databases"
+      ],
+      "expected_databases": [
+        "protein_structure",
+        "clinical_trials",
+        "adverse_events",
+        "pharmacology",
+        "literature"
+      ],
+      "requires_citations": true,
+      "requires_multiple_databases": true,
+      "complexity": "high",
+      "evaluation_focus": [
+        "tool_selection",
+        "research_comprehensiveness",
+        "citation_quality",
+        "literature_search"
+      ]
+    },
+    {
+      "id": "tc_002",
+      "name": "BRCA1 Variant Analysis",
+      "query": "Analyze the clinical significance of BRCA1 variants in breast cancer risk and treatment response. Please investigate:\n1. Population frequencies of pathogenic BRCA1 variants\n2. Clinical significance and pathogenicity classifications\n3. Associated cancer risks and penetrance estimates\n4. Treatment implications (PARP inhibitors, platinum agents)\n5. Current clinical trials for BRCA1-positive patients\n\nUse multiple databases to provide comprehensive evidence.",
+      "expected_tools": [
+        "pubmed_search",
+        "clinvar",
+        "gnomad",
+        "uniprot",
+        "clinicaltrials_gov",
+        "drugbank"
+      ],
+      "expected_databases": [
+        "genomic_variants",
+        "population_genetics",
+        "clinical_trials",
+        "pharmacology",
+        "literature"
+      ],
+      "requires_citations": true,
+      "requires_multiple_databases": true,
+      "complexity": "high",
+      "evaluation_focus": [
+        "tool_selection",
+        "research_comprehensiveness",
+        "citation_quality",
+        "literature_search"
+      ]
+    },
+    {
+      "id": "tc_003",
+      "name": "PI3K/AKT/mTOR Pathway Investigation",
+      "query": "Investigate the PI3K/AKT/mTOR pathway in cancer and identify potential therapeutic targets. Research focus:\n1. Key proteins and their interactions in the pathway\n2. Pathway alterations in different cancer types\n3. Current therapeutic agents targeting this pathway\n4. Resistance mechanisms and combination strategies\n5. Biomarkers for pathway activation and drug response\n\nSynthesize data from pathway, protein, and clinical databases.",
+      "expected_tools": [
+        "pubmed_search",
+        "kegg",
+        "reactome",
+        "uniprot",
+        "drugbank",
+        "clinicaltrials_gov"
+      ],
+      "expected_databases": [
+        "pathways",
+        "protein_interactions",
+        "clinical_trials",
+        "pharmacology",
+        "literature"
+      ],
+      "requires_citations": true,
+      "requires_multiple_databases": true,
+      "complexity": "high",
+      "evaluation_focus": [
+        "tool_selection",
+        "research_comprehensiveness",
+        "citation_quality",
+        "literature_search"
+      ]
+    },
+    {
+      "id": "tc_004",
+      "name": "Agent Capabilities Query",
+      "query": "What can you tell me about your capabilities?",
+      "expected_tools": [],
+      "expected_databases": [],
+      "requires_citations": false,
+      "requires_multiple_databases": false,
+      "complexity": "low",
+      "evaluation_focus": [
+        "helpfulness",
+        "correctness"
+      ]
+    }
+  ],
+  "metadata": {
+    "total_test_cases": 4,
+    "high_complexity": 3,
+    "low_complexity": 1,
+    "created_date": "2025-01-09",
+    "agent_version": "research-agent-v1.0"
+  }
+}

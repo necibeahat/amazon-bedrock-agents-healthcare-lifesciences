@@ -1,0 +1,43 @@
+{
+  "llmAsAJudge": {
+    "modelConfig": {
+      "bedrockEvaluatorModelConfig": {
+        "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "inferenceConfig": {
+          "maxTokens": 1000,
+          "temperature": 0.3
+        }
+      }
+    },
+    "ratingScale": {
+      "numerical": [
+        {
+          "value": 0.0,
+          "label": "Incomplete",
+          "definition": "Response addresses only a small fraction of the research question. Major aspects completely missing."
+        },
+        {
+          "value": 0.25,
+          "label": "Minimal",
+          "definition": "Response covers some aspects but is superficial. Many key points from the original question are not addressed."
+        },
+        {
+          "value": 0.5,
+          "label": "Partial",
+          "definition": "Response addresses about half of the research requirements. Some depth provided but missing several important aspects."
+        },
+        {
+          "value": 0.75,
+          "label": "Substantial",
+          "definition": "Response covers most aspects of the research question with good depth. Minor gaps or areas that could use more detail."
+        },
+        {
+          "value": 1.0,
+          "label": "Comprehensive",
+          "definition": "Response thoroughly addresses all aspects of the research question. Each numbered point or requirement is covered with appropriate depth and evidence. Multiple data sources synthesized effectively."
+        }
+      ]
+    },
+    "instructions": "You are evaluating the comprehensiveness of a biomedical research agent's response. Assess whether the agent thoroughly addressed all aspects of the research question.\n\nEVALUATION CRITERIA:\n\n1. REQUIREMENT COVERAGE:\n   - If the query listed specific numbered requirements (e.g., 1. protein structure, 2. pathways, 3. clinical data), did the response address each one?\n   - Are all major aspects of the question covered?\n\n2. DEPTH OF ANALYSIS:\n   - Is the information provided at an appropriate level of detail?\n   - Are findings from multiple databases synthesized together?\n   - Is there integration across different data types (e.g., molecular mechanisms + clinical outcomes)?\n\n3. MULTI-DATABASE SYNTHESIS:\n   - When multiple databases were queried, is the information from different sources integrated coherently?\n   - Are relationships between different data types explained (e.g., how genetic variants affect protein function, which impacts clinical outcomes)?\n\n4. RESEARCH QUESTION ALIGNMENT:\n   - Does the response stay focused on the research question?\n   - Are the findings organized in a logical, easy-to-follow structure?\n   - Is there a clear conclusion or summary that ties findings together?\n\n5. COMPLETENESS:\n   - Are there any obvious gaps in the analysis?\n   - If the query asked for comparisons, associations, or relationships, are these provided?\n\nOriginal user query: {context}\nAgent's response: {assistant_turn}\n\nProvide a score from 0.0 to 1.0 and explain which aspects were covered well and which were inadequately addressed or missing."
+  }
+}
